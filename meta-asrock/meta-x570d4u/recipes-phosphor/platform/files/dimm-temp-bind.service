@@ -1,0 +1,17 @@
+[Unit]
+Description=Instantiate the on-DIMM JC42/TSE2004 temperature sensors (i2c-7 0x1a/0x1b)
+Before=xyz.openbmc_project.hwmontempsensor.service
+After=sysinit.target
+DefaultDependencies=no
+
+[Service]
+# entity-manager only instantiates EEPROMs and the device tree declares nothing on the
+# SPD bus, so the JC42 sensors have to be created explicitly. 0x1a/0x1b pair with the
+# DDR4 SPD EEPROMs at 0x52/0x53.
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c '[ -e /sys/bus/i2c/devices/7-001a ] || echo jc42 0x1a > /sys/bus/i2c/devices/i2c-7/new_device'
+ExecStart=/bin/sh -c '[ -e /sys/bus/i2c/devices/7-001b ] || echo jc42 0x1b > /sys/bus/i2c/devices/i2c-7/new_device'
+
+[Install]
+WantedBy=multi-user.target

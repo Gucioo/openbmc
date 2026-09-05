@@ -1,0 +1,66 @@
+#!/bin/sh
+# Hold a sane fan floor on the Supermicro PWS-441P-1H, and publish the true fan
+# speed / duty as ExternalSensors.
+#
+# This PSU follows the PMBus Application Profile for AC/DC Server Power Supplies.
+# Section 12.2: FAN_COMMAND_1 (0x3b) "can only increase the power supplies fan speed"
+# and "the exponent N is fixed to a value of 0". The kernel pmbus driver encodes fan
+# targets as ordinary LINEAR11 with a *computed* exponent, so psusensor's target of 30
+# leaves as 0xdbc0; the PSU ignores the exponent, reads mantissa 960, and treats that as
+# 960% duty -- pinning the fan near 13000 RPM. It only ever increases, so it never
+# recovers and CLEAR_FAULTS does not help. psusensor rewrites it whenever it re-creates
+# the PSU sensors, so this runs as a guard rather than a one-shot.
+#
+# The same encoding mismatch makes the kernel's own pwm/fan1_target readings useless
+# (they show 0), which is why fan1 is left out of the entity-manager Labels and the
+# values are published here instead, correctly decoded.
+#
+# Measured: 0 -> fan STOPS (tach still reports a phantom ~224)
+#          20% -> 1248 RPM      30% -> ~2900 RPM      100% -> ~13300 RPM
+FAN_FLOOR_PERCENT=30
+POLL_SECONDS=10
+
+EXT=xyz.openbmc_project.ExternalSensor
+IFACE=xyz.openbmc_project.Sensor.Value
+
+want=$(printf '0x%04x' "$FAN_FLOOR_PERCENT")
+
+# PMBus LINEAR11: 5-bit two's complement exponent, 11-bit two's complement mantissa.
+lin11() {
+    v=$(($1))
+    e=$((v >> 11)); [ "$e" -gt 15 ] && e=$((e - 32))
+    m=$((v & 0x7FF)); [ "$m" -gt 1023 ] && m=$((m - 2048))
+    if [ "$e" -ge 0 ]; then echo $((m << e)); else echo $((m >> (0 - e))); fi
+}
+
+publish() {  # $1 = object path, $2 = value
+    busctl set-property "$EXT" "$1" "$IFACE" Value d "$2" 2>/dev/null
+}
+
+bus=""; addr=""
+while [ -z "$bus" ]; do
+    for h in /sys/class/hwmon/hwmon*; do
+        [ -r "$h/name" ] || continue
+        [ "$(cat "$h/name" 2>/dev/null)" = "pmbus" ] || continue
+        dev=$(readlink -f "$h/device" 2>/dev/null) || continue
+        id=${dev##*/}; bus=${id%%-*}; addr=0x$(printf '%x' "0x${id##*-}")
+        break
+    done
+    [ -z "$bus" ] && sleep 2
+done
+
+# -f is required: the pmbus driver owns the address.
+while :; do
+    cur=$(i2cget -y -f "$bus" "$addr" 0x3b w 2>/dev/null)
+    if [ -n "$cur" ] && [ "$cur" != "$want" ]; then
+        i2cset -y -f "$bus" "$addr" 0x3b "$want" w 2>/dev/null
+        cur=$want
+    fi
+    if [ -n "$cur" ]; then
+        pct=$(( $(($cur)) & 0x7FF ))          # N=0: the mantissa IS the duty percent
+        publish /xyz/openbmc_project/sensors/percent/PSU0_Fan1_PWM "$pct"
+    fi
+    raw=$(i2cget -y -f "$bus" "$addr" 0x90 w 2>/dev/null)
+    [ -n "$raw" ] && publish /xyz/openbmc_project/sensors/fan_tach/PSU0_Fan "$(lin11 "$raw")"
+    sleep "$POLL_SECONDS"
+done

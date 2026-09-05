@@ -25,4 +25,6 @@ RDEPENDS:${PN}-system = " \
         phosphor-host-postd \
         phosphor-post-code-manager \
         phosphor-power-regulators \
+        psu-pmbus-bind \
+        x570d4u-platform-init \
         "

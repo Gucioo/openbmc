@@ -1,0 +1,16 @@
+[Unit]
+Description=Enable VBAT (CMOS battery) voltage sensing on the X570D4U
+Documentation=man:gpioset(1)
+Before=xyz.openbmc_project.adcsensor.service
+
+[Service]
+# The board gates the VBAT divider behind "output-hwm-vbat-enable" (GPIO 48).
+# OpenBMC never claims that line, so ADC channel 9 reads ~0 mV instead of the
+# battery voltage. gpioset must keep running to hold the line asserted.
+Type=simple
+ExecStart=/usr/bin/gpioset -m signal gpiochip0 48=1
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
