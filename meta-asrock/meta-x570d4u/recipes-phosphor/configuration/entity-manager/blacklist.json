@@ -1,0 +1,8 @@
+{
+    "buses": [
+        {
+            "bus": 2,
+            "addresses": ["0x3c"]
+        }
+    ]
+}

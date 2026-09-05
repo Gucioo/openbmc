@@ -1,0 +1,12 @@
+[Unit]
+Description=Hold the PSU fan at a sane floor (PWS-441P-1H fixes FAN_COMMAND exponent at N=0)
+After=xyz.openbmc_project.psusensor.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/psu-fan-release
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

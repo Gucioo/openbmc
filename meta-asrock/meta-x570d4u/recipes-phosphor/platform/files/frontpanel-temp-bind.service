@@ -1,0 +1,17 @@
+[Unit]
+Description=Instantiate the front panel temperature sensor (TMP75/LM75 at i2c-0 0x4d)
+Before=xyz.openbmc_project.hwmontempsensor.service
+After=sysinit.target
+DefaultDependencies=no
+
+[Service]
+# entity-manager only instantiates EEPROMs, and the board device tree declares no
+# device on the AUX_PANEL1 SMBus, so the sensor has to be created explicitly. The board
+# only provides the header -- in this system the sensor itself is on the Chenbro RM238
+# front panel plugged into it.
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c '[ -e /sys/bus/i2c/devices/0-004d ] || echo tmp75 0x4d > /sys/bus/i2c/devices/i2c-0/new_device'
+
+[Install]
+WantedBy=multi-user.target
