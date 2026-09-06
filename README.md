@@ -12,7 +12,9 @@ fix for the fan tachometers.
 * **Board support layer:** [`meta-asrock/meta-x570d4u/`](meta-asrock/meta-x570d4u/) --
   [full README with every finding](meta-asrock/meta-x570d4u/README.md) and
   [specification references](meta-asrock/meta-x570d4u/docs/REFERENCES.md)
-* **Ready-to-flash image:** see [Releases](https://github.com/Gucioo/openbmc/releases)
+* **Ready-to-flash images:** see [Releases](https://github.com/Gucioo/openbmc/releases/latest)
+  -- `factory.mtd` (full 64 MiB SPI image, for a first install with a programmer) and
+  `sysupgrade.static.mtd.tar` (update an existing OpenBMC over the web UI or Redfish)
 * **Branch:** `x570d4u-2l2t-support`
 
 Everything below is measured on hardware unless stated otherwise. Where upstream is wrong,
