@@ -20,7 +20,42 @@ See [docs/REFERENCES.md](docs/REFERENCES.md) for the specifications behind the w
 | Battery | VBAT, via a sense-enable GPIO OpenBMC otherwise never asserts |
 | Identify LED | Read-only mirror of the front panel latch, as Redfish `LocationIndicatorActive` |
 | Web UI | Dark theme |
-| Fan control | Configured but **untested** -- see below |
+| Fan control | Six motherboard headers on a temperature curve; control path verified, tach feedback untested |
+
+## How the fans are controlled
+
+Six config files under `recipes-phosphor/fans/phosphor-fan/x570d4u/`, installed to
+`/usr/share/phosphor-fan-presence/`:
+
+| File | Role |
+|---|---|
+| `fans.json` | maps each fan to a zone and to its PWM target object |
+| `zones.json` | per-zone floor, ceiling, power-on target, ramp timing |
+| `groups.json` | named groups of D-Bus objects (the fans; the temperatures) |
+| `events.json` | the temperature-to-speed curves |
+| `monitor.json` | expected RPM per PWM, for fault detection |
+| `presence.json` | how presence is decided (tach) |
+
+All six headers (FAN1-FAN6, driving `pwm1`-`pwm6`) are in a single zone `0`. Two
+temperatures feed it, each with its own curve; the zone runs at whichever asks for more:
+
+* **CPU_Temp** -- flat 30% to 45 C, then ramping to 100% at 85 C
+* **MB_Temp** -- flat 30% to 35 C, then ramping to 100% at 65 C
+
+Floor is 77/255 (30%), ceiling 255, power-on target 128 (50%). Targets everywhere are raw
+PWM 0-255, not percent. Speed only decreases after 30 s at a lower demand
+(`decrease_interval`) and increases after 5 s (`increase_delay`), so it does not hunt.
+
+To retune, edit the `map` array of the relevant event in `events.json` -- each entry is
+`{"value": <temperature C>, "target": <pwm 0-255>}` and the highest entry at or below the
+current reading wins. Live-test without a rebuild by editing the copy in
+`/usr/share/phosphor-fan-presence/control/` and restarting
+`phosphor-fan-control@0.service`.
+
+Adding a temperature source means adding a group in `groups.json` and a
+`target_from_group_max` event in `events.json` with a **distinct `index`** -- the index
+identifies that curve's contribution to the zone, and reusing one makes the curves
+overwrite each other.
 
 ## The non-obvious parts
 
@@ -41,6 +76,27 @@ includes any entity-manager config republish, not just at boot.
 
 Measured on this unit: duty 0 stops the fan entirely (the tach still reports a phantom
 ~224 RPM, so do not trust it near zero), 20% -> 1248 RPM, 30% -> ~2900 RPM, 100% -> ~13300.
+
+### Fan PWM objects come from a connector, not from fan detection
+
+`phosphor-fan-control` drives `/xyz/openbmc_project/control/fanpwm/*`, and those objects are
+created by dbus-sensors only when the entity-manager fan config carries a `Connector`. An
+`AspeedFan` expose on its own gives a tach sensor and nothing else, so fan-control finds no
+target, logs *"No service for ... Control.FanPwm"* and retries every two seconds forever --
+roughly 43k lines a day into a RAM-backed journal that caps at 8 MB.
+
+The fix is a `BindConnector` on each fan pointing at an `IntelFanConnector` expose that
+declares `Pwm`, `Tachs` and optionally `PwmName`; entity-manager inlines the named expose as
+a `.Connector` sub-interface, which is what dbus-sensors looks for. Note the default PWM
+object name is `Pwm_<n+1>`, so `PwmName` is needed to get the `PWM1`-style names the
+phosphor-fan config uses.
+
+This is independent of whether a fan is plugged in -- the PWM outputs exist because the
+sysfs `pwmN` files exist. On this board the tach indices skip 3 (`fan1,2,3,5,6,7_input`)
+while the PWM channels do not, so `Tachs` runs 0,1,2,4,5,6 against `Pwm` 0..5.
+
+`aspeed_pwm_tacho` exposes no `pwmN_enable`, so dbus-sensors logs one
+*"Error read/write .../pwmN_enable"* per fan at startup. Harmless.
 
 ### Never instantiate i2c devices that a dbus-sensors daemon owns
 
@@ -99,23 +155,21 @@ on every label, which renders label text invisible on a dark surface.
 builds its static-file routes at startup, so restart it after adding files under
 `/usr/share/www`.
 
+
+The login page needs its own rules. `.login-container` and `.login-main` hardcode `#f4f4f4`
+(and `#fff` again inside a `min-width:768px` media query) behind Vue scoped-hash selectors
+like `.login-container[data-v-62114135]`, specificity (0,2,0). Matching the bare class with
+`!important` beats both the hash selector and the media-query variant without depending on
+a hash that changes every rebuild.
+
 ## Known gaps
 
-* **Fan control is untested and ships masked.** Nothing is connected to the motherboard fan
-  headers on this system -- all chassis fans are on a Chenbro backplane that regulates them
-  itself -- and the `/xyz/openbmc_project/control/fanpwm/*` objects phosphor-fan drives are
-  only created by fansensor once a real fan is detected. With empty headers the control loop
-  retries that lookup every two seconds forever, which floods an 8 MB RAM-backed journal, so
-  `phosphor-fan-control@0` is masked; monitor and presence stay enabled. Once a fan is on a
-  header:
+* **Fan control drives real PWM outputs, but the tach feedback path is untested.** The
+  curve computes a target, phosphor-fan writes it over `Control.FanPwm`, and it lands in
+  `aspeed_pwm_tacho`'s `pwm1..pwm6` -- verified by shifting a map point and watching sysfs
+  follow. What has never run is the half that needs a spinning fan: monitor/presence, fault
+  detection and the deviation tolerance. Nothing is connected to the headers on this system.
 
-  ```
-  systemctl unmask phosphor-fan-control@0.service
-  systemctl start  phosphor-fan-control@0.service
-  ```
-
-  The config is adapted from Renze Nicolai's port; see the bbappend for the three changes
-  that were required.
 * **NCT6779 Super I/O (i2c-1 0x2d) is deliberately not configured.** With the host on it
   binds and offers TSI0/TSI1 (AMD SB-TSI die temps), SYSTIN and AUXTIN1/2. But
   entity-manager assigns `Name`/`Name1`/... in hwmon index order rather than `Labels` order,

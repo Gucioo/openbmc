@@ -1,9 +1,9 @@
 [
     {
         "name": "0",
-        "poweron_target": 153,
+        "poweron_target": 128,
         "default_ceiling": 255,
-        "default_floor": 255,
+        "default_floor": 77,
         "increase_delay": 5,
         "decrease_interval": 30
     }

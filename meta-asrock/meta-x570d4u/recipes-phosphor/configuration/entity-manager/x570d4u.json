@@ -452,37 +452,97 @@
             "Index": 0,
             "Name": "FAN1",
             "PowerState": "On",
-            "Type": "AspeedFan"
+            "Type": "AspeedFan",
+            "BindConnector": "FAN1 connector"
         },
         {
             "Index": 1,
             "Name": "FAN2",
             "PowerState": "On",
-            "Type": "AspeedFan"
+            "Type": "AspeedFan",
+            "BindConnector": "FAN2 connector"
         },
         {
             "Index": 2,
             "Name": "FAN3",
             "PowerState": "On",
-            "Type": "AspeedFan"
+            "Type": "AspeedFan",
+            "BindConnector": "FAN3 connector"
         },
         {
             "Index": 4,
             "Name": "FAN4",
             "PowerState": "On",
-            "Type": "AspeedFan"
+            "Type": "AspeedFan",
+            "BindConnector": "FAN4 connector"
         },
         {
             "Index": 5,
             "Name": "FAN5",
             "PowerState": "On",
-            "Type": "AspeedFan"
+            "Type": "AspeedFan",
+            "BindConnector": "FAN5 connector"
         },
         {
             "Index": 6,
             "Name": "FAN6",
             "PowerState": "On",
-            "Type": "AspeedFan"
+            "Type": "AspeedFan",
+            "BindConnector": "FAN6 connector"
+        },
+        {
+            "Name": "FAN1 connector",
+            "Pwm": 0,
+            "PwmName": "PWM1",
+            "Tachs": [
+                0
+            ],
+            "Type": "IntelFanConnector"
+        },
+        {
+            "Name": "FAN2 connector",
+            "Pwm": 1,
+            "PwmName": "PWM2",
+            "Tachs": [
+                1
+            ],
+            "Type": "IntelFanConnector"
+        },
+        {
+            "Name": "FAN3 connector",
+            "Pwm": 2,
+            "PwmName": "PWM3",
+            "Tachs": [
+                2
+            ],
+            "Type": "IntelFanConnector"
+        },
+        {
+            "Name": "FAN4 connector",
+            "Pwm": 3,
+            "PwmName": "PWM4",
+            "Tachs": [
+                4
+            ],
+            "Type": "IntelFanConnector"
+        },
+        {
+            "Name": "FAN5 connector",
+            "Pwm": 4,
+            "PwmName": "PWM5",
+            "Tachs": [
+                5
+            ],
+            "Type": "IntelFanConnector"
+        },
+        {
+            "Name": "FAN6 connector",
+            "Pwm": 5,
+            "PwmName": "PWM6",
+            "Tachs": [
+                6
+            ],
+            "Type": "IntelFanConnector"
         }
     ],
     "Name": "ASRock Rack X570D4U-2L2T",

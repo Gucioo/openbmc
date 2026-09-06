@@ -101,3 +101,11 @@ service in the stock image). It is neither MDR V2 nor the IPMI blob transfer tha
   Notes on running a Supermicro PSU on an ASRock Rack board, including the LTC4316
   address-translator approach that this system deliberately does *not* use (the
   translator was removed; everything here talks to the PSU at its native addresses).
+* `dbus-sensors` -- `src/fan/FanMain.cpp`: the PWM object is created only when the fan's
+  entity-manager config has a `Connector` sub-interface carrying `Pwm`. entity-manager
+  builds that from `BindConnector` (`perform_scan.cpp:applyBindExposeAction` inlines the
+  expose whose `Name` matches, under the key after "Bind"). Without it an `AspeedFan`
+  yields a tach sensor and no PWM, and phosphor-fan-control spins on a failed lookup.
+* `dbus-sensors` -- `src/PwmSensor.cpp`: `targetIfaceMax = sysPwmMax = 255`, so
+  `Control.FanPwm`'s `Target` is raw PWM 0-255, while the `Sensor.Value` view of the same
+  PWM is a percentage. Default object name is `Pwm_<n+1>` unless `PwmName` overrides it.

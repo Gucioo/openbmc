@@ -179,3 +179,23 @@
 [data-bs-theme="dark"] .table .table-row-expand:hover svg {
   fill: #ffffff !important;
 }
+
+/*
+ * Round 4: the login page.
+ *
+ * .login-container is #f4f4f4, and #fff again inside a min-width:768px media query;
+ * .login-main is #f4f4f4. All three sit behind Vue scoped-hash selectors of the form
+ * .login-container[data-v-62114135], specificity (0,2,0). Those hashes change on every
+ * webui-vue rebuild, so match the plain class and win on !important instead -- that also
+ * beats the media-query variant, which is not itself !important.
+ */
+[data-bs-theme="dark"] .login-container,
+[data-bs-theme="dark"] .login-main,
+[data-bs-theme="dark"] .login-aside {
+  background: var(--bs-body-bg, #212529) !important;
+}
+
+/* the divider bar next to the brand was a light-grey #e6e6e6 */
+[data-bs-theme="dark"] .login-aside__logo-brand:not(:empty)::after {
+  background-color: var(--x-border) !important;
+}

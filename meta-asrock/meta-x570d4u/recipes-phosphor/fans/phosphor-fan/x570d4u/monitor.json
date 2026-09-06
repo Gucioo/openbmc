@@ -1,7 +1,7 @@
 {
     "fans": [
         {
-            "inventory": "/system/chassis/x570d4u/FAN1",
+            "inventory": "/system/board/ASRock_Rack_X570D4U_2L2T/FAN1",
             "allowed_out_of_range_time": 10,
             "deviation": 25,
             "num_sensors_nonfunc_for_fan_nonfunc": 1,
@@ -19,7 +19,7 @@
             ]
         },
         {
-            "inventory": "/system/chassis/x570d4u/FAN2",
+            "inventory": "/system/board/ASRock_Rack_X570D4U_2L2T/FAN2",
             "allowed_out_of_range_time": 10,
             "deviation": 25,
             "num_sensors_nonfunc_for_fan_nonfunc": 1,
@@ -37,7 +37,7 @@
             ]
         },
         {
-            "inventory": "/system/chassis/x570d4u/FAN3",
+            "inventory": "/system/board/ASRock_Rack_X570D4U_2L2T/FAN3",
             "allowed_out_of_range_time": 10,
             "deviation": 25,
             "num_sensors_nonfunc_for_fan_nonfunc": 1,
@@ -55,7 +55,7 @@
             ]
         },
         {
-            "inventory": "/system/chassis/x570d4u/FAN4",
+            "inventory": "/system/board/ASRock_Rack_X570D4U_2L2T/FAN4",
             "allowed_out_of_range_time": 10,
             "deviation": 25,
             "num_sensors_nonfunc_for_fan_nonfunc": 1,
@@ -73,7 +73,7 @@
             ]
         },
         {
-            "inventory": "/system/chassis/x570d4u/FAN5",
+            "inventory": "/system/board/ASRock_Rack_X570D4U_2L2T/FAN5",
             "allowed_out_of_range_time": 10,
             "deviation": 25,
             "num_sensors_nonfunc_for_fan_nonfunc": 1,
@@ -91,7 +91,7 @@
             ]
         },
         {
-            "inventory": "/system/chassis/x570d4u/FAN6",
+            "inventory": "/system/board/ASRock_Rack_X570D4U_2L2T/FAN6",
             "allowed_out_of_range_time": 10,
             "deviation": 25,
             "num_sensors_nonfunc_for_fan_nonfunc": 1,

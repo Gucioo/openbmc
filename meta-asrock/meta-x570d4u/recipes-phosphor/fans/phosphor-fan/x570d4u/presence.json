@@ -1,7 +1,7 @@
 [
     {
         "name": "FAN1",
-        "path": "/system/chassis/x570d4u/FAN1",
+        "path": "/system/board/ASRock_Rack_X570D4U_2L2T/FAN1",
         "methods": [
             {
                 "type": "tach",
@@ -16,7 +16,7 @@
     },
     {
         "name": "FAN2",
-        "path": "/system/chassis/x570d4u/FAN2",
+        "path": "/system/board/ASRock_Rack_X570D4U_2L2T/FAN2",
         "methods": [
             {
                 "type": "tach",
@@ -31,7 +31,7 @@
     },
     {
         "name": "FAN3",
-        "path": "/system/chassis/x570d4u/FAN3",
+        "path": "/system/board/ASRock_Rack_X570D4U_2L2T/FAN3",
         "methods": [
             {
                 "type": "tach",
@@ -46,7 +46,7 @@
     },
     {
         "name": "FAN4",
-        "path": "/system/chassis/x570d4u/FAN4",
+        "path": "/system/board/ASRock_Rack_X570D4U_2L2T/FAN4",
         "methods": [
             {
                 "type": "tach",
@@ -61,7 +61,7 @@
     },
     {
         "name": "FAN5",
-        "path": "/system/chassis/x570d4u/FAN5",
+        "path": "/system/board/ASRock_Rack_X570D4U_2L2T/FAN5",
         "methods": [
             {
                 "type": "tach",
@@ -76,7 +76,7 @@
     },
     {
         "name": "FAN6",
-        "path": "/system/chassis/x570d4u/FAN6",
+        "path": "/system/board/ASRock_Rack_X570D4U_2L2T/FAN6",
         "methods": [
             {
                 "type": "tach",
