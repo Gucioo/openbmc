@@ -19,7 +19,7 @@ See [docs/REFERENCES.md](docs/REFERENCES.md) for the specifications behind the w
 | Power | `total_power` from the PSU's true AC input, surfaced as `PowerConsumedWatts` |
 | Battery | VBAT, via a sense-enable GPIO OpenBMC otherwise never asserts |
 | Identify LED | Read-only mirror of the front panel latch, as Redfish `LocationIndicatorActive` |
-| Web UI | Dark theme |
+| Web UI | Dark theme, login page included |
 | Fan control | Six motherboard headers on a temperature curve, verified against real fans |
 
 ## How the fans are controlled
