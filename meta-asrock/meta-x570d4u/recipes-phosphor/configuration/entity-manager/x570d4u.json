@@ -430,10 +430,59 @@
         {
             "MaxValue": 100,
             "MinValue": 0,
-            "Name": "PSU0 Fan1 PWM",
+            "Name": "PSU0 Fan1 PWM percent",
             "Timeout": 60,
             "Type": "ExternalSensor",
-            "Units": "Percent"
+            "Units": "RPMS"
+        },
+        {
+            "Name": "PSU0 Power",
+            "PortType": "powered_by",
+            "Type": "Port"
+        },
+        {
+            "MaxValue": 600,
+            "MinValue": 0,
+            "Name": "total_power",
+            "Timeout": 60,
+            "Type": "ExternalSensor",
+            "Units": "Watts"
+        },
+        {
+            "Index": 0,
+            "Name": "FAN1",
+            "PowerState": "On",
+            "Type": "AspeedFan"
+        },
+        {
+            "Index": 1,
+            "Name": "FAN2",
+            "PowerState": "On",
+            "Type": "AspeedFan"
+        },
+        {
+            "Index": 2,
+            "Name": "FAN3",
+            "PowerState": "On",
+            "Type": "AspeedFan"
+        },
+        {
+            "Index": 4,
+            "Name": "FAN4",
+            "PowerState": "On",
+            "Type": "AspeedFan"
+        },
+        {
+            "Index": 5,
+            "Name": "FAN5",
+            "PowerState": "On",
+            "Type": "AspeedFan"
+        },
+        {
+            "Index": 6,
+            "Name": "FAN6",
+            "PowerState": "On",
+            "Type": "AspeedFan"
         }
     ],
     "Name": "ASRock Rack X570D4U-2L2T",
@@ -446,5 +495,6 @@
         "PartNumber": "$PRODUCT_PART_NUMBER",
         "SerialNumber": "$BOARD_SERIAL_NUMBER"
     },
+    "xyz.openbmc_project.Inventory.Item.Board.Motherboard": {},
     "xyz.openbmc_project.Inventory.Item.System": {}
 }

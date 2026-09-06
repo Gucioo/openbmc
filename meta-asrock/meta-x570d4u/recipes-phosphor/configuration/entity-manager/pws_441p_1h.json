@@ -26,6 +26,11 @@
             "temp1_Name": "PSU0 Temp",
             "vin_Name": "PSU0 AC Input Voltage",
             "vout1_Name": "PSU0 12V Output Voltage"
+        },
+        {
+            "Name": "PSU0 Power",
+            "PortType": "powering",
+            "Type": "Port"
         }
     ],
     "Name": "Supermicro PWS-441P-1H",

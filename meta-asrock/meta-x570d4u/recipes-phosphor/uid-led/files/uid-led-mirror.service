@@ -1,0 +1,16 @@
+[Unit]
+Description=Mirror the identify (UID) LED state onto D-Bus
+After=dbus.service
+Requires=dbus.service
+# Owns xyz.openbmc_project.LED.GroupManager, which bmcweb hardcodes. phosphor-led-manager
+# has no LED group configuration for this board and never takes the name.
+Conflicts=xyz.openbmc_project.LED.GroupManager.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/uid-led-mirror
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

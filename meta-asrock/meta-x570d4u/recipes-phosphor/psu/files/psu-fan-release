@@ -58,9 +58,13 @@ while :; do
     fi
     if [ -n "$cur" ]; then
         pct=$(( $(($cur)) & 0x7FF ))          # N=0: the mantissa IS the duty percent
-        publish /xyz/openbmc_project/sensors/percent/PSU0_Fan1_PWM "$pct"
+        publish /xyz/openbmc_project/sensors/fan_tach/PSU0_Fan1_PWM_percent "$pct"
     fi
     raw=$(i2cget -y -f "$bus" "$addr" 0x90 w 2>/dev/null)
     [ -n "$raw" ] && publish /xyz/openbmc_project/sensors/fan_tach/PSU0_Fan "$(lin11 "$raw")"
+    # READ_PIN (0x97) is true total AC input power. bmcweb builds
+    # /redfish/v1/Chassis/<id>/Power from a sensor named exactly total_power.
+    pin=$(i2cget -y -f "$bus" "$addr" 0x97 w 2>/dev/null)
+    [ -n "$pin" ] && publish /xyz/openbmc_project/sensors/power/total_power "$(lin11 "$pin")"
     sleep "$POLL_SECONDS"
 done

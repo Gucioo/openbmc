@@ -1,0 +1,181 @@
+/*
+ * Dark theme completion for webui-vue.
+ *
+ * Bootstrap 5.3's dark theme is already compiled into the app CSS and is enabled by
+ * data-bs-theme="dark" on <html>. That handles everything driven by --bs-* variables,
+ * but webui-vue hardcodes light colours in ~28 component rules (form controls, tables,
+ * badges, toasts), which left the main content area white. This restyles those.
+ *
+ * Palette follows Bootstrap's own dark scale so it matches the parts that already work:
+ *   #212529 body   #2b3035 surface   #343a40 raised/hover   #495057 border
+ */
+
+[data-bs-theme="dark"] {
+  --x-surface: #2b3035;
+  --x-raised: #343a40;
+  --x-border: #495057;
+  --x-text: #dee2e6;
+  --x-info-bg: #1c2b45;
+}
+
+/* form controls: were #f4f4f4 / #fff */
+[data-bs-theme="dark"] .custom-select,
+[data-bs-theme="dark"] .form-select,
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .input-group-text,
+[data-bs-theme="dark"] .custom-select:focus,
+[data-bs-theme="dark"] .form-select:focus,
+[data-bs-theme="dark"] .form-control:focus,
+[data-bs-theme="dark"] .form-background .custom-select,
+[data-bs-theme="dark"] .form-background .form-select,
+[data-bs-theme="dark"] .form-background .form-control,
+[data-bs-theme="dark"] .form-background .custom-select:focus,
+[data-bs-theme="dark"] .form-background .form-select:focus,
+[data-bs-theme="dark"] .form-background .form-control:focus {
+  background-color: var(--x-surface) !important;
+  color: var(--x-text) !important;
+  border-color: var(--x-border) !important;
+}
+
+/* page/section backgrounds that were #f4f4f4 */
+[data-bs-theme="dark"] .form-background,
+[data-bs-theme="dark"] .table .b-table-details,
+[data-bs-theme="dark"] .b-table-stacked-sm tr:not(.b-table-empty-row):nth-child(2n):after {
+  background-color: var(--x-surface) !important;
+  color: var(--x-text) !important;
+}
+
+/* hover / disabled states that were #e6e6e6 */
+[data-bs-theme="dark"] .btn-link:hover,
+[data-bs-theme="dark"] .table-filter .clear-all-btn:hover,
+[data-bs-theme="dark"] .table-filter .form-check:hover,
+[data-bs-theme="dark"] .table-filter .form-check:focus-within,
+[data-bs-theme="dark"] .b-table-stacked-sm tr:not(.b-table-empty-row):before,
+[data-bs-theme="dark"] .form-check .form-check-input:disabled,
+[data-bs-theme="dark"] .form-check .form-check-input[disabled=disabled] {
+  background-color: var(--x-raised) !important;
+  color: var(--x-text) !important;
+}
+
+/* info tints that were #ebf0fd */
+[data-bs-theme="dark"] .alert.alert-info,
+[data-bs-theme="dark"] .badge-primary,
+[data-bs-theme="dark"] .text-bg-secondary,
+[data-bs-theme="dark"] .b-toast-info .toast,
+[data-bs-theme="dark"] .toast.bg-info {
+  background-color: var(--x-info-bg) !important;
+  color: var(--x-text) !important;
+  border-color: var(--x-border) !important;
+}
+
+[data-bs-theme="dark"] .pagination .page-item.active button {
+  background-color: var(--x-raised) !important;
+  color: var(--x-text) !important;
+}
+
+/* safety net: any remaining white surfaces in the app shell */
+[data-bs-theme="dark"] .page-container,
+[data-bs-theme="dark"] .app-content,
+[data-bs-theme="dark"] main,
+[data-bs-theme="dark"] .content-wrapper,
+[data-bs-theme="dark"] #main-content {
+  background-color: var(--bs-body-bg) !important;
+  color: var(--bs-body-color) !important;
+}
+
+/* tables inherit the dark surface rather than white */
+[data-bs-theme="dark"] .table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--x-text);
+  --bs-table-border-color: var(--x-border);
+}
+
+/* ---------------------------------------------------------------------------
+ * Round 2: elements webui-vue styles outside the Bootstrap variable system.
+ * Vue scoped-style hashes (e.g. [data-v-87dd92f4]) are deliberately NOT used --
+ * they change whenever webui-vue is rebuilt.
+ * ------------------------------------------------------------------------ */
+
+/* Left navigation: .nav-container was #f4f4f4 */
+[data-bs-theme="dark"] .nav-container,
+[data-bs-theme="dark"] .nav-container__close-button,
+[data-bs-theme="dark"] nav.nav-container {
+  background-color: var(--x-surface) !important;
+  color: var(--x-text) !important;
+  border-inline-end: 1px solid var(--x-border);
+}
+[data-bs-theme="dark"] .nav-container a,
+[data-bs-theme="dark"] .nav-container .nav-link,
+[data-bs-theme="dark"] .nav-container button {
+  color: var(--x-text) !important;
+}
+[data-bs-theme="dark"] .nav-container .nav-link:hover,
+[data-bs-theme="dark"] .nav-container .nav-link--current {
+  background-color: var(--x-raised) !important;
+  color: #fff !important;
+}
+
+/* Overview page tiles: .card .bg-* were pale tints (#e7f3e7 etc.) */
+[data-bs-theme="dark"] .card .bg-success { background-color: #1e3a24 !important; }
+[data-bs-theme="dark"] .card .bg-danger  { background-color: #3e1f24 !important; }
+[data-bs-theme="dark"] .card .bg-warning { background-color: #3d3218 !important; }
+[data-bs-theme="dark"] .card .bg-info,
+[data-bs-theme="dark"] .card .bg-light,
+[data-bs-theme="dark"] .card .bg-white   { background-color: var(--x-raised) !important; }
+[data-bs-theme="dark"] .card {
+  background-color: var(--x-surface) !important;
+  border-color: var(--x-border) !important;
+  color: var(--x-text) !important;
+}
+[data-bs-theme="dark"] .card-header { background-color: var(--x-raised) !important; }
+
+/* Table headers were light with #161616 text */
+[data-bs-theme="dark"] .table .thead-light th,
+[data-bs-theme="dark"] .table .table-light th,
+[data-bs-theme="dark"] .table thead th,
+[data-bs-theme="dark"] .table-light,
+[data-bs-theme="dark"] .table-light > td,
+[data-bs-theme="dark"] .table-light > th {
+  background-color: var(--x-raised) !important;
+  color: var(--x-text) !important;
+  border-color: var(--x-border) !important;
+}
+
+/* THE invisible-label fix. webui-vue forces color:#161616!important on every
+ * label and control, which on a dark surface is unreadable. */
+[data-bs-theme="dark"] .custom-select,
+[data-bs-theme="dark"] .form-select,
+[data-bs-theme="dark"] .custom-control-label,
+[data-bs-theme="dark"] .form-check-label,
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] label,
+[data-bs-theme="dark"] .form-label,
+[data-bs-theme="dark"] legend {
+  color: var(--x-text) !important;
+}
+[data-bs-theme="dark"] .form-check .form-check-input:disabled + .form-check-label,
+[data-bs-theme="dark"] .form-check .form-check-input[disabled=disabled] + .form-check-label {
+  color: #8a9199 !important;
+}
+
+/* Status text that used near-black on a coloured chip */
+[data-bs-theme="dark"] .text-bg-info,
+[data-bs-theme="dark"] .text-bg-warning,
+[data-bs-theme="dark"] .text-bg-light {
+  color: #f8f9fa !important;
+}
+[data-bs-theme="dark"] .status-icon + span,
+[data-bs-theme="dark"] dl dd,
+[data-bs-theme="dark"] dl dt {
+  color: var(--x-text) !important;
+}
+
+/* Round 3: the row-expand chevron was fill:#161616 -- invisible until hover. */
+[data-bs-theme="dark"] .table .table-row-expand svg,
+[data-bs-theme="dark"] .table .table-row-expand:hover svg,
+[data-bs-theme="dark"] .table .table-row-expand button svg {
+  fill: var(--x-text) !important;
+}
+[data-bs-theme="dark"] .table .table-row-expand:hover svg {
+  fill: #ffffff !important;
+}
