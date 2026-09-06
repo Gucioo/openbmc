@@ -242,6 +242,19 @@ a hash that changes every rebuild.
 
 ## Known gaps
 
+* **The web UI's Sensors page does not live-update, by upstream design.** webui-vue backs it
+  with a TanStack query configured `staleTime: Infinity`, `refetchOnMount: false` and
+  `refetchOnWindowFocus: false`, with no `refetchInterval` and no refresh control, so only a
+  full page reload fetches new values -- and results stay cached for 5 minutes, so leaving
+  the page and returning does not refetch either. Deliberate, not a defect.
+
+  Polling it would be expensive here. bmcweb answers `$expand` with 501 unless built with
+  `insecure-enable-redfish-query`, so the page fetches the collection plus every sensor
+  individually: 39 requests at ~390 ms each, about 15 s for one full refresh even over a
+  single reused connection. The cost is bmcweb itself, not the network -- connection reuse
+  changes nothing. Live-ish values would need that expand option (flagged experimental
+  upstream) before any refetch interval is worth adding.
+
 * **NCT6779 Super I/O (i2c-1 0x2d) is deliberately not configured.** With the host on it
   binds and offers TSI0/TSI1 (AMD SB-TSI die temps), SYSTIN and AUXTIN1/2. But
   entity-manager assigns `Name`/`Name1`/... in hwmon index order rather than `Labels` order,
