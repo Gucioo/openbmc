@@ -37,6 +37,8 @@ FILESEXTRAPATHS:prepend:x570d4u := "${THISDIR}/${PN}:${THISDIR}/${PN}/${MACHINE}
 PACKAGECONFIG:append:x570d4u = " json"
 
 SRC_URI:append:x570d4u = " \
+    file://0001-fanctl-fix-positional-option-name-with-a-space.patch \
+    file://10-after-fansensor.conf \
     file://fans.json \
     file://zones.json \
     file://events.json \
@@ -57,3 +59,12 @@ do_configure:prepend:x570d4u() {
     install -m 0644 ${UNPACKDIR}/presence.json ${S}/monitor/config_files/${MACHINE}/
 }
 
+
+# Order fan control after the daemon that creates the objects it drives.
+do_install:append:x570d4u() {
+    install -d ${D}${systemd_system_unitdir}/phosphor-fan-control@.service.d
+    install -m 0644 ${UNPACKDIR}/10-after-fansensor.conf \
+        ${D}${systemd_system_unitdir}/phosphor-fan-control@.service.d/
+}
+
+FILES:${PN}-control:append:x570d4u = " ${systemd_system_unitdir}/phosphor-fan-control@.service.d"

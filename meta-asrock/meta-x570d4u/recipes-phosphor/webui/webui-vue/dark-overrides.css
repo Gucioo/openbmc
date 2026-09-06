@@ -199,3 +199,45 @@
 [data-bs-theme="dark"] .login-aside__logo-brand:not(:empty)::after {
   background-color: var(--x-border) !important;
 }
+
+/*
+ * Attribution badge, injected into index.html outside #app so it survives every
+ * route change without touching the Vue tree. Centred in the top bar: the logo
+ * sits left and the helper menu right, and .nav-tags between them is clipped to
+ * 1x1px for screen readers, so the middle is genuinely empty. The header is dark
+ * in both themes (.app-header forces white link colour), hence the fixed light
+ * text rather than a theme token. Hidden below 992px, where the bar gets busy.
+ */
+#x570d4u-credit {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 2.9rem;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  padding: 0 .5rem;
+  z-index: 1035;              /* above the header, below modals (1055) */
+  font-size: .8rem;
+  white-space: nowrap;
+  text-decoration: none;
+  color: rgba(255, 255, 255, .6);
+  transition: color .15s ease;
+}
+#x570d4u-credit svg {
+  display: block;
+  flex: none;
+}
+#x570d4u-credit:hover,
+#x570d4u-credit:focus {
+  color: #fff;
+  text-decoration: none;
+}
+#x570d4u-credit:hover span,
+#x570d4u-credit:focus span {
+  text-decoration: underline;
+}
+@media (max-width: 991.98px) {
+  #x570d4u-credit { display: none; }
+}

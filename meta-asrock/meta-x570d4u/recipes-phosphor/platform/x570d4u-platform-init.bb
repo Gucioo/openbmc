@@ -13,13 +13,19 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 
 inherit systemd
 
-SRC_URI = "file://vbat-enable.service"
+SRC_URI = "file://vbat-enable.service \
+           file://fan-boot-duty.service \
+           file://fan-boot-duty \
+           "
 
 RDEPENDS:${PN} = "libgpiod-tools"
 
-SYSTEMD_SERVICE:${PN} = "vbat-enable.service"
+SYSTEMD_SERVICE:${PN} = "vbat-enable.service fan-boot-duty.service"
 
 do_install() {
     install -d ${D}${systemd_system_unitdir}
     install -m 0644 ${UNPACKDIR}/vbat-enable.service ${D}${systemd_system_unitdir}
+    install -m 0644 ${UNPACKDIR}/fan-boot-duty.service ${D}${systemd_system_unitdir}
+    install -d ${D}${bindir}
+    install -m 0755 ${UNPACKDIR}/fan-boot-duty ${D}${bindir}/fan-boot-duty
 }

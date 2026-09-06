@@ -1,0 +1,40 @@
+#!/bin/sh
+# Hold the motherboard fans at a moderate duty until fan control takes over.
+#
+# The AST2500's PWM registers reset to 255, so every fan runs flat out from
+# power-on, and phosphor-fan-control does not set the curve's floor until
+# entity-manager and fansensor are up -- measured at ~147 s on this board.
+# That is by design as a safe default (no temperatures are known yet), but it
+# is unnecessarily loud for the whole of that window, particularly when the
+# BMC is restarted while the host keeps running.
+#
+# 128/255 (50%) is the compromise: clearly quieter than the hardware default
+# while keeping plenty of margin, since nothing has read a temperature yet.
+# Fan control lowers it to the 30% floor once it has. If fan control never
+# starts at all, the fans stay here rather than at the floor.
+#
+# The pwm-tacho driver is built into the kernel, so its hwmon exists from
+# around 7 s -- well before this runs. The retry loop only covers a late probe.
+BOOT_DUTY=128
+
+i=0
+while [ "$i" -lt 20 ]; do
+    for h in /sys/class/hwmon/hwmon*; do
+        [ -r "$h/name" ] || continue
+        [ "$(cat "$h/name" 2>/dev/null)" = "aspeed_pwm_tacho" ] || continue
+        n=0
+        for p in "$h"/pwm[1-9]; do
+            [ -w "$p" ] || continue
+            echo "$BOOT_DUTY" > "$p" 2>/dev/null && n=$((n + 1))
+        done
+        if [ "$n" -gt 0 ]; then
+            echo "fan-boot-duty: set $n PWM channels to $BOOT_DUTY"
+            exit 0
+        fi
+    done
+    i=$((i + 1))
+    sleep 1
+done
+
+echo "fan-boot-duty: no aspeed_pwm_tacho hwmon found, leaving PWMs alone"
+exit 0

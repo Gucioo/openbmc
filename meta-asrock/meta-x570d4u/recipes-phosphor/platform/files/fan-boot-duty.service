@@ -1,0 +1,17 @@
+[Unit]
+Description=Hold the fans at 50% until fan control takes over
+Documentation=file:///usr/share/doc/x570d4u/README
+# Run as early as userspace allows: sysinit.target is only reached at ~37s on
+# this board, and fan control does not set the floor until ~147s.
+DefaultDependencies=no
+After=local-fs.target
+Before=sysinit.target phosphor-fan-control@0.service
+ConditionPathExists=/sys/class/hwmon
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/fan-boot-duty
+
+[Install]
+WantedBy=sysinit.target
