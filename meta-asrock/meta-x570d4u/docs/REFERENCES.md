@@ -124,3 +124,17 @@ service in the stock image). It is neither MDR V2 nor the IPMI blob transfer tha
 * `phosphor-fan-presence` -- `monitor/tach_sensor.cpp:TachSensor::getRange()` computes the
   allowed band as `target * (100 -/+ deviation)/100 * factor + offset`, so `factor` and
   `offset` must match the fans actually fitted or every fan is reported faulty.
+* `phosphor-fan-presence` -- `control/json/manager.cpp:Manager::load()` evaluates
+  `profiles.json` before constructing zones, while `control/json/dbus_zone.cpp` has the zone
+  host `xyz.openbmc_project.Control.ThermalMode`. A profile keyed on that object therefore
+  fails its mapper lookup at startup and takes the daemon down. `control/json/profile.cpp`
+  offers only the `all_of` method and throws rather than defaulting when a property is
+  unreadable. `DBusZone::current()` upper-cases the value it stores and rejects anything not
+  in `Supported`.
+* `phosphor-fan-presence` -- `control/fanctl.cpp:904` registers a positional option named
+  `"fan list"`, with a space. CLI11 rejects that at app construction, so every fanctl
+  invocation fails with "Invalid positional Name: fan list" before parsing. fanctl is
+  unusable as shipped.
+* `phosphor-fan-presence` -- `docs/control/README.md` documents
+  `/etc/phosphor-fan-presence/control/` as a per-file override directory searched ahead of
+  the image copy; the intended way to retune without building firmware.

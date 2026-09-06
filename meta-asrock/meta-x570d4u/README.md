@@ -87,6 +87,41 @@ Refit these if you fit different fans.
 > the fans are still spinning down until fan control takes over, which can read as roughly
 > double the settled figure.
 
+### Retuning without a rebuild
+
+phosphor-fan searches `/etc/phosphor-fan-presence/control/` before the image's copy under
+`/usr/share/phosphor-fan-presence/control/`, per file. Create it (`mkdir -p`), drop in a
+modified `events.json`, and restart `phosphor-fan-control@0` -- no rebuild, no flash. Prefer
+this over editing the copy under `/usr`, which lands in the read-write overlay and shadows
+the image permanently. Remove the override when finished, or it shadows future images the
+same way.
+
+### There is no fan control in the web UI, and thermal profiles do not work here
+
+webui-vue has no fan control page -- only a read-only inventory table. Redfish's
+`Chassis/<id>/Thermal` lists fans with `Reading` and `Status` but no target, bmcweb
+registers no PATCH route for fan speed, and `ThermalSubsystem/Fans` is empty. Nothing is
+merely disabled: the feature is absent. Adding one would need a nav section (webui-vue's
+`src/env/` hook, as IBM and Intel use) *and* an OEM route in bmcweb.
+
+phosphor-fan's own profile mechanism cannot fill the gap either. `profiles.json` entries
+select on D-Bus properties and tag `events.json` entries so only the active profile's curves
+load, with `xyz.openbmc_project.Control.ThermalMode` as the obvious selector. But that object
+is hosted by the zone, and `Manager::load()` evaluates profiles **before** the zones are
+created, so a profile keyed on it looks up an object that does not exist yet:
+
+    Uncaught DBus service lookup failure exception,
+      Path=/xyz/openbmc_project/control/thermal/0,
+      Interface=xyz.openbmc_project.Control.ThermalMode
+
+phosphor-fan-control then exits 1 and fails on every boot -- verified on hardware. Profiles
+would need a selector property hosted by some *other* service ordered before fan control.
+
+Two details worth knowing if anyone retries this: `Current` is stored upper-cased, so a
+profile must match `"QUIET"` rather than `"Quiet"` or it silently never matches; and only
+values listed in the zone's `Supported` property are accepted, so the mode list has to be
+declared in `zones.json` first.
+
 To retune, edit the `map` array of the relevant event in `events.json` -- each entry is
 `{"value": <temperature C>, "target": <pwm 0-255>}` and the highest entry at or below the
 current reading wins. Live-test without a rebuild by editing the copy in
