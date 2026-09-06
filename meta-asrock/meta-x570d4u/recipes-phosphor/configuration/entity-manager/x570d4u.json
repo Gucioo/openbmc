@@ -462,21 +462,21 @@
             "BindConnector": "FAN3 connector"
         },
         {
-            "Index": 11,
+            "Index": 3,
             "Name": "FAN4",
             "PowerState": "On",
             "Type": "AspeedFan",
             "BindConnector": "FAN4 connector"
         },
         {
-            "Index": 5,
+            "Index": 4,
             "Name": "FAN5",
             "PowerState": "On",
             "Type": "AspeedFan",
             "BindConnector": "FAN5 connector"
         },
         {
-            "Index": 4,
+            "Index": 5,
             "Name": "FAN6",
             "PowerState": "On",
             "Type": "AspeedFan",
@@ -514,25 +514,25 @@
             "Pwm": 3,
             "PwmName": "PWM4",
             "Tachs": [
-                11
+                3
             ],
             "Type": "IntelFanConnector"
         },
         {
             "Name": "FAN5 connector",
-            "Pwm": 4,
+            "Pwm": 5,
             "PwmName": "PWM5",
             "Tachs": [
-                5
+                4
             ],
             "Type": "IntelFanConnector"
         },
         {
             "Name": "FAN6 connector",
-            "Pwm": 5,
+            "Pwm": 4,
             "PwmName": "PWM6",
             "Tachs": [
-                4
+                5
             ],
             "Type": "IntelFanConnector"
         }

@@ -48,30 +48,44 @@ PWM 0-255, not percent. Speed only decreases after 30 s at a lower demand
 
 ### Header, PWM and tachometer mapping
 
-Determined empirically -- drive one PWM to 255 with every other at 60, wait 25 s, and see
-which tach responds. **The device tree groupings are not the wiring.** It pairs pwm channel
-3 with tachs {4,11}, channel 4 with {6,13} and channel 5 with {5,12}, but the board is
-wired otherwise:
+All six verified on hardware: each fan run alone at full duty with every other fan stopped,
+and the header confirmed against the silkscreen by watching which fan spins. FAN1 and FAN2
+were tested by temporarily moving the FAN5 and FAN6 fans onto them.
 
-| Header | PWM channel | sysfs | tach channel | sysfs | verified |
+| Header | PWM channel | sysfs | tach channel | sysfs | RPM at full duty |
 |---|---|---|---|---|---|
-| FAN1 | 0 | `pwm1` | 0 | `fan1_input` | no fan fitted |
-| FAN2 | 1 | `pwm2` | 1 | `fan2_input` | no fan fitted |
-| FAN3 | 2 | `pwm3` | 2 | `fan3_input` | yes, 794 -> 2611 RPM |
-| FAN4 | 3 | `pwm4` | 11? | `fan12_input` | **no tach response at all** |
-| FAN5 | 4 | `pwm5` | 5 | `fan6_input` | yes, 700 -> 2347 RPM |
-| FAN6 | 5 | `pwm6` | 4 | `fan5_input` | yes, 745 -> 2556 RPM |
+| FAN1 | 0 | `pwm1` | 0 | `fan1_input` | 2445 |
+| FAN2 | 1 | `pwm2` | 1 | `fan2_input` | 2614 |
+| FAN3 | 2 | `pwm3` | 2 | `fan3_input` | 2549 |
+| FAN4 | 3 | `pwm4` | 3 | `fan4_input` | 2453 |
+| FAN5 | 5 | `pwm6` | 4 | `fan5_input` | 2573 |
+| FAN6 | 4 | `pwm5` | 5 | `fan6_input` | 2241 |
+
+Note FAN5 and FAN6 are crossed: FAN5 is the higher PWM channel but the lower tach. Each
+PWM drives exactly one tach and no channel answers to more than one PWM.
+
+**The stock device tree gets this wrong**, which is why a patch is carried in
+`recipes-kernel/linux/`. It never enables tach channel 3 -- FAN4's -- so that header reports
+no tachometer at all even with a known-good fan; unplugging the fan changes nothing, because
+nothing was reading it. It also groups tach 4 with FAN4, tach 5 with FAN5 and tach 6 with
+FAN6, none of which matches the board. The clue is that tach 4 keeps reporting after FAN4 is
+unplugged.
 
 The entity-manager `Index` on an `AspeedFan` is the tach channel, and `fanN_input` is
-channel N-1. Two of these were wrong in the inherited configuration: FAN6 was on 6 and FAN4
-on 4, the latter colliding with FAN6's real channel.
+channel N-1. FAN1 and FAN2 are 4-pin headers; FAN4, FAN5 and FAN6 are 6-pin dual-fan
+connectors, which is why each carries a second tach channel (11, 12, 13) for its other
+position. Those positions are unpopulated here, so their channel assignments are untested.
 
 `monitor.json` models expected RPM as `target x (100 +/- deviation)/100 x factor + offset`.
 The inherited `factor: 82` was for completely different fans -- at the 77 floor it expects
-6314 RPM against an actual ~1030, so every fan would have been flagged faulty. Fitted to
-the fans on this machine: `factor: 9`, `offset: 200`, `deviation: 30`, which brackets both
-the floor (~1030 measured, 685-1101 allowed) and full speed (~2500 measured, 1806-3182).
+6314 RPM against an actual ~1030, so every fan would have been flagged faulty. Fitted to the
+fans on this machine: `factor: 9`, `offset: 200`, `deviation: 30`, which brackets both the
+floor (~1030 measured, 685-1101 allowed) and full speed (~2500 measured, 1806-3182).
 Refit these if you fit different fans.
+
+> Take RPM readings shortly after boot with a pinch of salt: the PWMs power on at 255 and
+> the fans are still spinning down until fan control takes over, which can read as roughly
+> double the settled figure.
 
 To retune, edit the `map` array of the relevant event in `events.json` -- each entry is
 `{"value": <temperature C>, "target": <pwm 0-255>}` and the highest entry at or below the
@@ -227,13 +241,6 @@ like `.login-container[data-v-62114135]`, specificity (0,2,0). Matching the bare
 a hash that changes every rebuild.
 
 ## Known gaps
-
-* **FAN4's tachometer never reports.** Driving `pwm4` to full for 45 s moves none of the
-  nine tach channels, with a fan connected to that header. Control still works (the PWM
-  object exists regardless of tach), but the fan is invisible to monitoring. Its `Index` is
-  set to 11, the channel the device tree pairs with that PWM, but this is unverified.
-* **FAN1 and FAN2 are unpopulated on this system**, so their tach sensors read unavailable.
-  Expected, and harmless now that the fan-not-present escalation events are gone.
 
 * **NCT6779 Super I/O (i2c-1 0x2d) is deliberately not configured.** With the host on it
   binds and offers TSI0/TSI1 (AMD SB-TSI die temps), SYSTIN and AUXTIN1/2. But

@@ -113,3 +113,14 @@ service in the stock image). It is neither MDR V2 nor the IPMI blob transfer tha
   `/run/initramfs/ro`, writable JFFS2 upper layer at `/run/initramfs/rw/cow`. A firmware
   update rewrites the squashfs but not the read-write volume, so any file written to `/usr`
   on a live BMC outlives every subsequent flash and silently shadows the image's copy.
+* Linux `arch/arm/boot/dts/aspeed/aspeed-bmc-asrock-x570d4u.dts` -- the fan tach channel
+  assignments are wrong for this board. Tach channel 3 is never enabled, so the FAN4 header
+  reports no tachometer at all, and the primary channels for FAN5 and FAN6 are swapped.
+  Patched in `recipes-kernel/linux/`. The `reg` values (PWM channel) and the header names in
+  the comments are correct; only `aspeed,fan-tach-ch` is wrong.
+* Linux `drivers/pinctrl/aspeed/pinctrl-aspeed-g5.c` -- defines no TACH/TACHO pinmux groups
+  at all, so tach pins need no pinctrl entry; enabling a channel in the device tree is
+  sufficient.
+* `phosphor-fan-presence` -- `monitor/tach_sensor.cpp:TachSensor::getRange()` computes the
+  allowed band as `target * (100 -/+ deviation)/100 * factor + offset`, so `factor` and
+  `offset` must match the fans actually fitted or every fan is reported faulty.

@@ -1,0 +1,57 @@
+From: Gucioo <7483436+Gucioo@users.noreply.github.com>
+Subject: [PATCH] ARM: dts: aspeed: x570d4u: fix the fan tachometer channels
+
+The FAN4 header reports no tachometer at all, with a known-good fan that
+reads correctly on other hardware. Unplugging it changes nothing on any
+enabled channel, because its signal arrives on tach channel 3 -- the one
+channel in the 0-6 range this DTS never enables.
+
+The primary channels for FAN5 and FAN6 are also swapped. Measured by
+running each fan alone at full duty with every other fan stopped, and
+confirmed against the board's silkscreen by observing which fan spins:
+
+    header   pwm ch   tach ch      RPM at full duty
+    FAN1     0        0            2445
+    FAN2     1        1            2614
+    FAN3     2        2            2549
+    FAN4     3        3            2453
+    FAN5     5        4            2573
+    FAN6     4        5            2241
+
+Each PWM drives exactly one tach and no channel responds to more than
+one PWM, so the assignment is unambiguous. The DTS instead grouped tach
+4 with FAN4 (pwm 3), tach 5 with FAN5 (pwm 5) and tach 6 with FAN6
+(pwm 4); tach 4 keeps reporting when FAN4 is unplugged, which is what
+first showed the grouping to be wrong.
+
+The second channel of each 6-pin header (11, 12, 13) is left as it was,
+along with 6, since those positions are unpopulated here and untested.
+No previously enabled channel is removed; channel 3 is added.
+
+Upstream-Status: Pending
+
+--- a/arch/arm/boot/dts/aspeed/aspeed-bmc-asrock-x570d4u.dts	2026-09-06 10:01:25.824843856 +0000
++++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-asrock-x570d4u.dts	2026-09-06 10:01:25.832844076 +0000
+@@ -325,19 +325,19 @@
+ 	fan@3 {
+ 		/* FAN4 (6-pin) */
+ 		reg = <0x03>;
+-		aspeed,fan-tach-ch = /bits/ 8 <0x04 0x0b>;
++		aspeed,fan-tach-ch = /bits/ 8 <0x03 0x0b>;
+ 	};
+ 
+ 	fan@4 {
+ 		/* FAN6 (6-pin) */
+ 		reg = <0x04>;
+-		aspeed,fan-tach-ch = /bits/ 8 <0x06 0x0d>;
++		aspeed,fan-tach-ch = /bits/ 8 <0x05 0x06 0x0d>;
+ 	};
+ 
+ 	fan@5 {
+ 		/* FAN5 (6-pin) */
+ 		reg = <0x05>;
+-		aspeed,fan-tach-ch = /bits/ 8 <0x05 0x0c>;
++		aspeed,fan-tach-ch = /bits/ 8 <0x04 0x0c>;
+ 	};
+ };
+ 
