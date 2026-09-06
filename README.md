@@ -50,6 +50,100 @@ Channels 0-3 are a straight 1:1 with the PWM channels; **FAN5 and FAN6 are cross
 and FAN2 are 4-pin headers; FAN4, FAN5 and FAN6 are 6-pin dual-fan connectors whose second
 position (channels 11, 12, 13) is untested here.
 
+## Running a Supermicro PMBus power supply
+
+**Fully tested** on a Supermicro **PWS-441P-1H** driving an X570D4U-2L2T: telemetry, fan
+control, Redfish inventory and `PowerConsumedWatts` all work, and the supply has run this way
+continuously. Nothing here is board-specific -- it is ordinary PMBus 1.2 -- so it should
+apply to other Supermicro PMBus supplies of the same generation, though only this model has
+actually been tried.
+
+### Wiring
+
+The PSU's PMBus lines go straight onto an I2C bus the BMC owns (here `i2c-2`, the header the
+board provides). **No address translator is needed.** An LTC4316 was fitted at first and then
+removed; everything below talks to the supply at its native addresses:
+
+| Address (7-bit) | Device |
+|---|---|
+| `0x3c` | PMBus telemetry and control |
+| `0x38` | FRU EEPROM (model, serial, part number) |
+
+Supermicro's own IPMICFG guide quotes the same split for this family (`78h`/`70h` written as
+8-bit), which is a useful cross-check against a supply you have not opened.
+
+### Registers used
+
+The kernel's generic `pmbus` driver handles the telemetry once the device is instantiated, so
+these are the ones worth knowing -- the first is read *and written* directly, because the
+driver gets it wrong:
+
+| Command | Name | Format | Used for |
+|---|---|---|---|
+| `0x3B` | `FAN_COMMAND_1` | LINEAR11, **exponent fixed at N=0** | reading and setting fan duty |
+| `0x90` | `READ_FAN_SPEED_1` | LINEAR11 | true fan RPM |
+| `0x97` | `READ_PIN` | LINEAR11 | total AC input power |
+| `0x88`/`0x8B` | `READ_VIN` / `READ_VOUT` | LINEAR11 / LINEAR16 | input and output voltage |
+| `0x8C` | `READ_IOUT` | LINEAR11 | output current |
+| `0x8D` | `READ_TEMPERATURE_1` | LINEAR11 | internal temperature |
+| `0x96` | `READ_POUT` | LINEAR11 | output power |
+
+LINEAR11 is an 11-bit two's complement mantissa with a 5-bit two's complement exponent, both
+packed into one word (PMBus 1.2 Part II §7.1).
+
+### The fan runs flat out, and it is not the supply's fault
+
+Out of the box the fan sat near **13000 RPM** and would not come down. `CLEAR_FAULTS` did
+nothing, and it survived power cycles of the host.
+
+The cause is an encoding disagreement. The *PMBus Application Profile for AC/DC Server Power
+Supplies* §12.2 fixes `FAN_COMMAND_1`'s exponent at **N=0**, so the mantissa alone is the duty
+percentage. The kernel `pmbus` driver does not know that and writes ordinary LINEAR11 with a
+*computed* exponent: a target of 30 leaves as `0xdbc0`. The supply ignores the exponent, reads
+mantissa 960, and takes it as **960% duty**. The same section notes the command can only ever
+*increase* fan speed, which is why it never recovered on its own.
+
+Writing the value the profile's way fixes it -- 30% is simply `0x001e`.
+
+Measured on this unit:
+
+| Duty | RPM |
+|---|---|
+| 0% | stopped (the tach still reports a phantom ~224, so do not trust it near zero) |
+| 20% | 1248 |
+| 30% | ~2900 |
+| 100% | ~13300 |
+
+`psu-fan-release` holds a 30% floor. It runs as a **guard, not a one-shot**: `psusensor`
+rewrites the bad value whenever it re-creates the PSU sensors, which includes any
+entity-manager republish and not just boot. It also publishes the true RPM and input power,
+because the kernel's own readings are wrong in both directions -- `fan1_target` reads 0 while
+the register holds `0x001e`.
+
+### Keeping fru-device away from it
+
+`fru-device` hunts for FRU EEPROMs with `i2c_smbus_write_byte` to set a read offset. On a
+PMBus device that byte **is a command**, so probing injects arbitrary PMBus commands into a
+live power supply. `blacklist.json` excludes `0x3c` for that reason. `0x38` is deliberately
+left alone -- it really is an EEPROM, and that is where the model and serial come from.
+
+### What you get
+
+`PSU0 Total Input Power`, `PSU0 12V Output Power`, `PSU0 12V Output Current`,
+`PSU0 12V Output Voltage`, `PSU0 AC Input Voltage`, `PSU0 Temp`, `PSU0 Fan` (RPM) and
+`PSU0 Fan1 PWM` (a true percentage). The supply appears in Redfish inventory with its real
+model and serial, and `total_power` becomes `PowerConsumedWatts` -- the *actual* AC draw at
+the wall, not an estimate.
+
+### Adapting it to another Supermicro supply
+
+Change the probe in
+[`pws_441p_1h.json`](meta-asrock/meta-x570d4u/recipes-phosphor/configuration/entity-manager/pws_441p_1h.json)
+to match your model's `PRODUCT_PRODUCT_NAME`, and check the `Labels` list against what your
+supply's hwmon actually exposes. The fan-command workaround is generic to the profile, not to
+this model. Leave `fan1` out of `Labels` deliberately -- the RPM is published separately
+because the driver's value cannot be trusted here.
+
 ## Findings that apply beyond this board
 
 These cost real time to find, and most are not documented anywhere obvious.
