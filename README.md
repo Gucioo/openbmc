@@ -1,3 +1,140 @@
+# OpenBMC for the ASRock Rack X570D4U-2L2T
+
+This is a fork of [OpenBMC](https://github.com/openbmc/openbmc) carrying board support for
+the **ASRock Rack X570D4U / X570D4U-2L2T**, developed against a real machine: an X570D4U-2L2T
+in a Chenbro RM238 chassis with a Supermicro PWS-441P-1H power supply.
+
+Upstream ships an entity-manager config for the x470d4u but nothing for this board, so a
+stock build reports **no sensors at all**. This fork adds the sensor bring-up, PSU support
+over PMBus, working fan control, a read-only identify LED, a dark web UI, and a device tree
+fix for the fan tachometers.
+
+* **Board support layer:** [`meta-asrock/meta-x570d4u/`](meta-asrock/meta-x570d4u/) --
+  [full README with every finding](meta-asrock/meta-x570d4u/README.md) and
+  [specification references](meta-asrock/meta-x570d4u/docs/REFERENCES.md)
+* **Ready-to-flash image:** see [Releases](https://github.com/Gucioo/openbmc/releases)
+* **Branch:** `x570d4u-2l2t-support`
+
+Everything below is measured on hardware unless stated otherwise. Where upstream is wrong,
+that is called out with the evidence.
+
+## What works
+
+39 sensors -- 13 voltage rails, CPU and board temperatures, front-panel and on-DIMM
+temperatures, VBAT, six fan tachometers and six fan PWMs. Full PSU telemetry over PMBus with
+no address translator. Fan control on all six headers driven by a temperature curve. PSU in
+Redfish inventory, `PowerConsumedWatts` from the PSU's true AC input, identify LED state in
+Redfish, and a dark web UI including the login page.
+
+## Fan header, PWM and tachometer mapping
+
+The stock device tree gets this wrong, so a patch is carried in
+[`recipes-kernel/linux/`](meta-asrock/meta-x570d4u/recipes-kernel/linux/). It never enables
+tach channel 3, so the **FAN4 header reports no tachometer at all** even with a known-good
+fan -- unplugging the fan changes nothing, because nothing was reading it. The primary
+channels for FAN5 and FAN6 are also swapped.
+
+Measured by running each fan alone at full duty with every other fan stopped, then confirming
+against the silkscreen by watching which fan spins:
+
+| Header | PWM channel | sysfs | tach channel | sysfs | RPM at full duty |
+|---|---|---|---|---|---|
+| FAN1 | 0 | `pwm1` | 0 | `fan1_input` | 2445 |
+| FAN2 | 1 | `pwm2` | 1 | `fan2_input` | 2614 |
+| FAN3 | 2 | `pwm3` | 2 | `fan3_input` | 2549 |
+| FAN4 | 3 | `pwm4` | 3 | `fan4_input` | 2453 |
+| FAN5 | 5 | `pwm6` | 4 | `fan5_input` | 2573 |
+| FAN6 | 4 | `pwm5` | 5 | `fan6_input` | 2241 |
+
+Channels 0-3 are a straight 1:1 with the PWM channels; **FAN5 and FAN6 are crossed**. FAN1
+and FAN2 are 4-pin headers; FAN4, FAN5 and FAN6 are 6-pin dual-fan connectors whose second
+position (channels 11, 12, 13) is untested here.
+
+## Findings that apply beyond this board
+
+These cost real time to find, and most are not documented anywhere obvious.
+
+**A Supermicro PSU's fan pins at ~13000 RPM under Linux.** The PMBus Application Profile for
+AC/DC Server Power Supplies fixes `FAN_COMMAND_1`'s exponent at N=0, but the kernel `pmbus`
+driver writes ordinary LINEAR11 with a computed exponent. A target of 30 leaves as `0xdbc0`;
+the PSU ignores the exponent, reads mantissa 960, and treats it as 960% duty. The command can
+only ever *increase* fan speed, so it never recovers and `CLEAR_FAULTS` does not help.
+
+**Fan PWM objects come from a connector, not from fan detection.** dbus-sensors creates
+`/xyz/openbmc_project/control/fanpwm/*` only when the entity-manager fan config carries a
+`Connector`. Without one, an `AspeedFan` yields a tach sensor and no PWM target, and
+`phosphor-fan-control` logs *"No service for ... Control.FanPwm"* and retries every two
+seconds **forever** -- about 43k journal lines a day into a RAM-backed journal.
+
+**Never instantiate an i2c device that a dbus-sensors daemon owns.** `hwmontempsensor` creates
+TMP75 and JC42 devices itself, and `psusensor` creates the PSU's pmbus device. Adding a
+systemd unit that writes to `new_device` makes them fight, and sensors appear and vanish.
+
+**Files copied onto a running BMC shadow the image permanently.** The rootfs is an overlay and
+a firmware update rewrites only the read-only half, so anything ever `scp`ed into `/usr`
+survives every subsequent flash and silently wins. A flash appears to succeed, the version
+string changes, and your old test file is still in place. Check
+`find /run/initramfs/rw/cow/usr -type f` after flashing.
+
+**`fanctl` is broken upstream and fixed here.** `control/fanctl.cpp` registers a positional
+option named `"fan list"`, with a space, which CLI11 rejects while the command tree is being
+built -- so every invocation fails with *"Invalid positional Name: fan list"* before parsing,
+including `fanctl get`. One-character fix, carried as a patch.
+
+**Thermal profiles cannot key on `Control.ThermalMode`.** `Manager::load()` evaluates
+`profiles.json` before constructing zones, but the zone is what hosts that object, so the
+profile's lookup throws and fan control exits 1 on every boot. Verified on hardware. Two
+further traps: `Current` is stored upper-cased, so a profile must match `"QUIET"` not
+`"Quiet"` or it silently never matches, and only values in the zone's `Supported` list are
+accepted.
+
+**Redfish `LocationIndicatorActive` needs four things**, only discoverable from bmcweb's
+source: a service publishing `Led.Group`, an object manager, ownership of the hardcoded name
+`xyz.openbmc_project.LED.GroupManager`, and an `identifying` association from a chassis that
+implements `Item.Chassis`, `Item.Panel` or `Item.Board.Motherboard`. Miss the last and bmcweb
+skips the lookup with nothing logged.
+
+**An `ExternalSensor` cannot produce a visible percent sensor.** It derives its D-Bus
+namespace from `Units` alone, and while `"Percent"` maps to `.../sensors/percent/`, bmcweb's
+sensor collection does not enumerate that namespace -- the sensor would be correctly labelled
+and completely invisible. A percent reading has to be published by a daemon that owns the
+object under `fan_pwm` directly.
+
+**The web UI has no fan control, and its Sensors page never live-updates.** Neither is
+disabled -- both are absent by design. See the
+[layer README](meta-asrock/meta-x570d4u/README.md) for the measurements behind that.
+
+**Dark mode is mostly free.** Bootstrap 5.3's dark theme is already compiled into webui-vue;
+it needs `data-bs-theme="dark"` on `<html>` plus overrides for the ~28 rules that hardcode
+light colours, including one that forces `color:#161616!important` on every label and would
+otherwise render label text invisible. Avoid Vue scoped-hash selectors -- they change on
+every rebuild.
+
+## Build notes
+
+GCC 12 or newer is required: `nodejs-native` bundles `ada`, which uses C++20 `constexpr
+std::string`, and libstdc++ only implements that from GCC 12. A full build does not fit
+comfortably in 100 GB, so add `INHERIT += "rm_work"`.
+
+Flashing over Redfish needs an explicit content type, or bmcweb answers 400 and creates no
+task:
+
+```
+curl -k -u root:<password> -X POST \
+  -H "Content-Type: application/octet-stream" \
+  -T obmc-phosphor-image-x570d4u-<build>.static.mtd.tar \
+  https://<bmc-ip>/redfish/v1/UpdateService/update
+```
+
+## Credits
+
+Board bring-up follows the trail cut by [Renze Nicolai](https://nicolaielectronics.nl/blog/openbmc-x570d4u/),
+whose X570D4U port is the basis of the fan control configuration here, and by
+[Mrkvak](https://github.com/Mrkvak/homelab) on running a Supermicro PSU with an ASRock Rack
+board.
+
+---
+
 # OpenBMC
 
 [![Build Status](https://jenkins.openbmc.org/buildStatus/icon?job=latest-master)](https://jenkins.openbmc.org/job/latest-master/)
