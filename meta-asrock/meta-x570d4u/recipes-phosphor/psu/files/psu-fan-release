@@ -23,6 +23,8 @@ POLL_SECONDS=10
 EXT=xyz.openbmc_project.ExternalSensor
 IFACE=xyz.openbmc_project.Sensor.Value
 
+PWM_STATE=/run/psu0_fan1_pwm
+
 want=$(printf '0x%04x' "$FAN_FLOOR_PERCENT")
 
 # PMBus LINEAR11: 5-bit two's complement exponent, 11-bit two's complement mantissa.
@@ -58,7 +60,10 @@ while :; do
     fi
     if [ -n "$cur" ]; then
         pct=$(( $(($cur)) & 0x7FF ))          # N=0: the mantissa IS the duty percent
-        publish /xyz/openbmc_project/sensors/fan_tach/PSU0_Fan1_PWM_percent "$pct"
+        # psu-pwm-sensor renders this as a real percent sensor under
+        # /xyz/openbmc_project/sensors/fan_pwm/. Written via a temp file so a
+        # reader never sees a half-written value.
+        echo "$pct" > "$PWM_STATE.tmp" 2>/dev/null && mv "$PWM_STATE.tmp" "$PWM_STATE" 2>/dev/null
     fi
     raw=$(i2cget -y -f "$bus" "$addr" 0x90 w 2>/dev/null)
     [ -n "$raw" ] && publish /xyz/openbmc_project/sensors/fan_tach/PSU0_Fan "$(lin11 "$raw")"

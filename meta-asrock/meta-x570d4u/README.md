@@ -15,12 +15,12 @@ See [docs/REFERENCES.md](docs/REFERENCES.md) for the specifications behind the w
 |---|---|
 | Voltages | 13 ADC rails. Host-only rails carry `PowerState: "On"` so they read `nan` rather than alarming while the host is off. |
 | Temperatures | W83773G (i2c-1 0x4c), front panel TMP75 (i2c-0 0x4d), on-DIMM JC42 (i2c-7 0x1a/0x1b) |
-| PSU | Full PMBus telemetry, PSU in Redfish inventory, fan held at a sane floor |
+| PSU | Full PMBus telemetry, PSU in Redfish inventory, fan held at a sane floor, duty as a true percent sensor |
 | Power | `total_power` from the PSU's true AC input, surfaced as `PowerConsumedWatts` |
 | Battery | VBAT, via a sense-enable GPIO OpenBMC otherwise never asserts |
 | Identify LED | Read-only mirror of the front panel latch, as Redfish `LocationIndicatorActive` |
 | Web UI | Dark theme |
-| Fan control | Six motherboard headers on a temperature curve; control path verified, tach feedback untested |
+| Fan control | Six motherboard headers on a temperature curve, verified against real fans |
 
 ## How the fans are controlled
 
@@ -45,6 +45,33 @@ temperatures feed it, each with its own curve; the zone runs at whichever asks f
 Floor is 77/255 (30%), ceiling 255, power-on target 128 (50%). Targets everywhere are raw
 PWM 0-255, not percent. Speed only decreases after 30 s at a lower demand
 (`decrease_interval`) and increases after 5 s (`increase_delay`), so it does not hunt.
+
+### Header, PWM and tachometer mapping
+
+Determined empirically -- drive one PWM to 255 with every other at 60, wait 25 s, and see
+which tach responds. **The device tree groupings are not the wiring.** It pairs pwm channel
+3 with tachs {4,11}, channel 4 with {6,13} and channel 5 with {5,12}, but the board is
+wired otherwise:
+
+| Header | PWM channel | sysfs | tach channel | sysfs | verified |
+|---|---|---|---|---|---|
+| FAN1 | 0 | `pwm1` | 0 | `fan1_input` | no fan fitted |
+| FAN2 | 1 | `pwm2` | 1 | `fan2_input` | no fan fitted |
+| FAN3 | 2 | `pwm3` | 2 | `fan3_input` | yes, 794 -> 2611 RPM |
+| FAN4 | 3 | `pwm4` | 11? | `fan12_input` | **no tach response at all** |
+| FAN5 | 4 | `pwm5` | 5 | `fan6_input` | yes, 700 -> 2347 RPM |
+| FAN6 | 5 | `pwm6` | 4 | `fan5_input` | yes, 745 -> 2556 RPM |
+
+The entity-manager `Index` on an `AspeedFan` is the tach channel, and `fanN_input` is
+channel N-1. Two of these were wrong in the inherited configuration: FAN6 was on 6 and FAN4
+on 4, the latter colliding with FAN6's real channel.
+
+`monitor.json` models expected RPM as `target x (100 +/- deviation)/100 x factor + offset`.
+The inherited `factor: 82` was for completely different fans -- at the 77 floor it expects
+6314 RPM against an actual ~1030, so every fan would have been flagged faulty. Fitted to
+the fans on this machine: `factor: 9`, `offset: 200`, `deviation: 30`, which brackets both
+the floor (~1030 measured, 685-1101 allowed) and full speed (~2500 measured, 1806-3182).
+Refit these if you fit different fans.
 
 To retune, edit the `map` array of the relevant event in `events.json` -- each entry is
 `{"value": <temperature C>, "target": <pwm 0-255>}` and the highest entry at or below the
@@ -116,6 +143,43 @@ Hence `blacklist.json`. The PSU's real FRU EEPROM at 0x38 is deliberately not bl
 The board gates the divider behind `output-hwm-vbat-enable`, which OpenBMC never claims.
 `vbat-enable` holds it, after which ADC channel 9 reads the battery correctly.
 
+### A percent sensor has to be published by hand
+
+The board's PWMs read as `%` in Redfish because dbus-sensors' `PwmSensor` places them under
+`/xyz/openbmc_project/sensors/fan_pwm/` with `Unit.Percent`. That path is driven off a hwmon
+`pwmN` file, and the PSU has none -- its pmbus hwmon exposes `fan1_target` but no `pwm1` --
+so the duty has to come over PMBus instead.
+
+An entity-manager `ExternalSensor` cannot fill the gap. It derives its object namespace
+solely from `Units` via `getPathForUnits`, and although `"Percent"` is in that allowlist it
+maps to `/xyz/openbmc_project/sensors/percent/`, which bmcweb's sensor collection does not
+enumerate -- the sensor would be correctly labelled and completely invisible. No units value
+maps to `fan_pwm`. Using `"RPMS"` keeps it visible but labels a percentage as RPM.
+
+Hence `psu-pwm-sensor`, which owns the object directly: `Sensor.Value` with `Unit.Percent`,
+an object manager, and a `chassis`/`all_sensors` association so bmcweb finds it under the
+chassis. `psu-fan-release` already talks PMBus to hold the floor, so it writes the duty to
+`/run/psu0_fan1_pwm` and the daemon only renders it -- one PMBus reader, no second bus
+master.
+
+### Files copied to a running BMC permanently shadow the image
+
+The rootfs is an overlay: a read-only squashfs under `/run/initramfs/ro` with a writable
+JFFS2 upper layer at `/run/initramfs/rw/cow`. Anything written to `/usr` on a running BMC --
+`scp`ing a config for a quick test, editing a JSON in place -- lands in the upper layer and
+**keeps winning after every firmware update**, because a normal update rewrites the squashfs
+but leaves the read-write volume alone.
+
+The failure mode is quiet and misleading: a flash appears to succeed, the version string
+changes, and the file you were testing still has your old test content. Verifying a flash by
+reading files on the BMC can therefore confirm your own leftovers rather than the image.
+
+Check with `find /run/initramfs/rw/cow/usr -type f`, and compare against
+`/run/initramfs/ro/<same path>` before deleting anything -- a file that exists only in the
+upper layer is not in the image at all. Delete stale copies from the `cow` directory
+directly and reboot; deleting through the merged mount instead creates a whiteout device
+that hides the image's copy just as effectively.
+
 ### entity-manager caches its parsed configuration
 
 It serves `/var/configuration/system.json` and does **not** re-read the config files on a
@@ -164,11 +228,12 @@ a hash that changes every rebuild.
 
 ## Known gaps
 
-* **Fan control drives real PWM outputs, but the tach feedback path is untested.** The
-  curve computes a target, phosphor-fan writes it over `Control.FanPwm`, and it lands in
-  `aspeed_pwm_tacho`'s `pwm1..pwm6` -- verified by shifting a map point and watching sysfs
-  follow. What has never run is the half that needs a spinning fan: monitor/presence, fault
-  detection and the deviation tolerance. Nothing is connected to the headers on this system.
+* **FAN4's tachometer never reports.** Driving `pwm4` to full for 45 s moves none of the
+  nine tach channels, with a fan connected to that header. Control still works (the PWM
+  object exists regardless of tach), but the fan is invisible to monitoring. Its `Index` is
+  set to 11, the channel the device tree pairs with that PWM, but this is unverified.
+* **FAN1 and FAN2 are unpopulated on this system**, so their tach sensors read unavailable.
+  Expected, and harmless now that the fan-not-present escalation events are gone.
 
 * **NCT6779 Super I/O (i2c-1 0x2d) is deliberately not configured.** With the host on it
   binds and offers TSI0/TSI1 (AMD SB-TSI die temps), SYSTIN and AUXTIN1/2. But

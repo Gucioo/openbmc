@@ -1,0 +1,13 @@
+[Unit]
+Description=Publish the PSU fan duty as a percent sensor
+After=xyz.openbmc_project.ObjectMapper.service
+Wants=xyz.openbmc_project.ObjectMapper.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/psu-pwm-sensor
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

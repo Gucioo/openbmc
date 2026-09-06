@@ -27,4 +27,6 @@ RDEPENDS:${PN}-system = " \
         phosphor-power-regulators \
         psu-pmbus-bind \
         x570d4u-platform-init \
+        uid-led-mirror \
+        psu-pwm-sensor \
         "

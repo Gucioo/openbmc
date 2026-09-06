@@ -428,14 +428,6 @@
             "Units": "RPMS"
         },
         {
-            "MaxValue": 100,
-            "MinValue": 0,
-            "Name": "PSU0 Fan1 PWM percent",
-            "Timeout": 60,
-            "Type": "ExternalSensor",
-            "Units": "RPMS"
-        },
-        {
             "Name": "PSU0 Power",
             "PortType": "powered_by",
             "Type": "Port"
@@ -470,7 +462,7 @@
             "BindConnector": "FAN3 connector"
         },
         {
-            "Index": 4,
+            "Index": 11,
             "Name": "FAN4",
             "PowerState": "On",
             "Type": "AspeedFan",
@@ -484,7 +476,7 @@
             "BindConnector": "FAN5 connector"
         },
         {
-            "Index": 6,
+            "Index": 4,
             "Name": "FAN6",
             "PowerState": "On",
             "Type": "AspeedFan",
@@ -522,7 +514,7 @@
             "Pwm": 3,
             "PwmName": "PWM4",
             "Tachs": [
-                4
+                11
             ],
             "Type": "IntelFanConnector"
         },
@@ -540,7 +532,7 @@
             "Pwm": 5,
             "PwmName": "PWM6",
             "Tachs": [
-                6
+                4
             ],
             "Type": "IntelFanConnector"
         }

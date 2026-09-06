@@ -109,3 +109,7 @@ service in the stock image). It is neither MDR V2 nor the IPMI blob transfer tha
 * `dbus-sensors` -- `src/PwmSensor.cpp`: `targetIfaceMax = sysPwmMax = 255`, so
   `Control.FanPwm`'s `Target` is raw PWM 0-255, while the `Sensor.Value` view of the same
   PWM is a percentage. Default object name is `Pwm_<n+1>` unless `PwmName` overrides it.
+* OpenBMC rootfs layout -- the running filesystem is an overlay: read-only squashfs at
+  `/run/initramfs/ro`, writable JFFS2 upper layer at `/run/initramfs/rw/cow`. A firmware
+  update rewrites the squashfs but not the read-write volume, so any file written to `/usr`
+  on a live BMC outlives every subsequent flash and silently shadows the image's copy.
